@@ -1,0 +1,63 @@
+plugins {
+  id 'application'
+}
+
+application {
+  mainClassName = "Main"
+  applicationDefaultJvmArgs = ["-DPIGPIOD_HOST=visioncoproc.local"]
+  project.ext.set('nativeLibsDir', "$buildDir/libs/natives")
+}
+
+repositories {
+  mavenCentral()
+  jcenter()
+  maven {
+    url "https://jitpack.io"
+  }
+//    maven {
+//      url "http://first.wpi.edu/FRC/roborio/maven/release"
+//    }
+}
+
+configurations {
+  nativeBundle
+}
+
+dependencies {
+  implementation 'com.diozero:diozero-core:0.11'
+  implementation 'com.github.team997coders:SpartanLib:63e6872a64'
+  implementation 'com.github.team997coders:WpilibjEmbedded:e751f4fda8'
+  implementation 'org.tinylog:tinylog:1.3.6'
+  implementation 'net.java.jinput:jinput:2.0.9'
+  runtimeOnly 'com.diozero:diozero-provider-pigpio:0.11'
+  if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    nativeBundle 'net.java.jinput:windows-plugin:2.0.9:natives-windows'
+  } else if (System.getProperty("os.name").toLowerCase().contains("os x")) {
+    nativeBundle 'net.java.jinput:osx-plugin:2.0.9:natives-osx'
+  } else {
+    nativeBundle 'net.java.jinput:linux-plugin:2.0.9:natives-linux'
+  }
+}
+
+wrapper {
+  gradleVersion = '5.1.1'
+}
+
+// So much pain...gradle test runner and Java 11 incompatibilities
+// https://github.com/gradle/gradle/issues/5731
+targetCompatibility = '1.8'
+sourceCompatibility = '1.8'
+
+task extractNativeBundle(type: Sync) {
+  from {
+    configurations.nativeBundle.collect { zipTree(it) }
+  }
+  into file(project.nativeLibsDir)
+}
+
+assembleDist.dependsOn extractNativeBundle
+
+run {
+  dependsOn extractNativeBundle
+  systemProperty "java.library.path", project.nativeLibsDir
+}
