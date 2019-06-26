@@ -10,6 +10,7 @@ import oi.OperatorInterface;
 import org.pmw.tinylog.Logger;
 import org.team997coders.wpilibj.SchedulerTask;
 
+import devices.DigisparkFeedbackEncoder;
 import devices.ParallaxHallEffectFeedbackSensor;
 import subsystems.DriveTrain;
 
@@ -22,8 +23,6 @@ public class Main {
   // Define constants
   private static final int leftWheelPin = 24;     // PI GPIO 24 is the left wheel, pin 13 on Stamp board
   private static final int rightWheelPin = 23;    // PI GPIO 23 is the right wheel, pin 12 on Stamp board
-  private static final int leftWheelFeedbackPin = 27;
-  private static final int rightWheelFeedbackPin = 17;  
 
   public static void main(String[] args) throws InterruptedException {
     // Create a gamepad
@@ -39,10 +38,17 @@ public class Main {
 //    Servo.Trim trim = new Servo.Trim(1.5f, 1.5f, 1.3f, 1.7f);   // For slow parallax 360 rotation servos
     Servo.Trim trim = new Servo.Trim(1.5f, 1.5f, 1.28f, 1.72f);
     try (Servo leftWheelServo = new Servo(leftWheelPin, trim.getMaxPulseWidthMs(), 50, trim);
-        Servo rightWheelServo = new Servo(rightWheelPin, trim.getMinPulseWidthMs(), 50, trim);
-        ParallaxHallEffectFeedbackSensor leftWheelFeedbackSensor = new ParallaxHallEffectFeedbackSensor(leftWheelFeedbackPin);
-        ParallaxHallEffectFeedbackSensor rightWheelFeedbackSensor = new ParallaxHallEffectFeedbackSensor(rightWheelFeedbackPin);) {
+        Servo rightWheelServo = new Servo(rightWheelPin, trim.getMinPulseWidthMs(), 50, trim)) {
       leftWheelServo.setInverted(true);
+
+      // Set up communication with servo feedback encoders
+      DigisparkFeedbackEncoder digisparkFeedbackEncoder = new DigisparkFeedbackEncoder();
+      ParallaxHallEffectFeedbackSensor leftWheelFeedbackSensor = 
+          new ParallaxHallEffectFeedbackSensor(digisparkFeedbackEncoder, ParallaxHallEffectFeedbackSensor.WheelSide.LEFT);
+      ParallaxHallEffectFeedbackSensor rightWheelFeedbackSensor = 
+          new ParallaxHallEffectFeedbackSensor(digisparkFeedbackEncoder, ParallaxHallEffectFeedbackSensor.WheelSide.RIGHT);
+
+      // Set up the operator interface so we can get joystick feedback
       OperatorInterface operatorInterface = new OperatorInterface(gamepad);
 
       // Start the command scheduler
@@ -55,6 +61,7 @@ public class Main {
         trim, 
         leftWheelServo, 
         rightWheelServo, 
+        digisparkFeedbackEncoder,
         leftWheelFeedbackSensor, 
         rightWheelFeedbackSensor, 
         operatorInterface);

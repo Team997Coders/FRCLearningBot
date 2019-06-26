@@ -1,44 +1,33 @@
 package devices;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-import com.diozero.api.DigitalInputDevice;
-import com.diozero.api.DigitalInputEvent;
-import com.diozero.api.GpioEventTrigger;
-import com.diozero.api.GpioPullUpDown;
-import com.diozero.api.InputEventListener;
-import com.diozero.util.RuntimeIOException;
-
 import org.pmw.tinylog.Logger;
 
 /**
  * This class implements the feedback logic of the Hall effect sensor in the Parallax
  * 900-00360 360 high-speed rotatation servo with feedback. See page 5-6 of
- * https://www.pololu.com/file/0J1395/900-00360-Feedback-360-HS-Servo-v1.2.pdf
+ * https://www.pololu.com/file/0J1395/900-00360-Feedback-360-HS-Servo-v1.2.pdf.
+ * It relies on getting the duty cycle of the hall-sensor from custom
+ * firmware running on a Digispark ATTINY85 breakout board.
  */
-public class ParallaxHallEffectFeedbackSensor 
-    extends DigitalInputDevice 
-    implements InputEventListener<DigitalInputEvent> {
-  private long tHigh;
-  private long tLow;
-  private long lastNanos;
-  private boolean lastValue;
+public class ParallaxHallEffectFeedbackSensor {
+  public enum WheelSide { LEFT, RIGHT };
+
   private long rotationCount;
   private int fullCircleUnits = 360;
   private int quadrant2Min;
   private int quadrant3Max;
   private int previousTheta;
   private int theta;
+  private final WheelSide wheelSide;
+  private final DigisparkFeedbackEncoder digisparkFeedbackEncoder;
   private static final int DUTY_CYCLE_MIN = 29;
   private static final int DUTY_CYCLE_MAX = 971;
-  private Lock lock;
   
-  public ParallaxHallEffectFeedbackSensor(int gpio) throws RuntimeIOException {
-    super(gpio, GpioPullUpDown.NONE, GpioEventTrigger.BOTH);
-    lock = new ReentrantLock();
+  
+  public ParallaxHallEffectFeedbackSensor(DigisparkFeedbackEncoder digisparkFeedbackEncoder, WheelSide wheelSide) {
+    this.digisparkFeedbackEncoder = digisparkFeedbackEncoder;
+    this.wheelSide = wheelSide;
     computeQuadrants();
-    addListener(this);
   }
 
   private void computeQuadrants() {
@@ -67,25 +56,14 @@ public class ParallaxHallEffectFeedbackSensor
   }
 
   public boolean update() {
-    // Fetch timing values locally so we do not block valueChanged event processing
-    long tHigh = 0;
-    long tLow = 0;
-    long tCycle = 0;
-    lock.lock();
-    try {
-      tHigh = this.tHigh;
-      tLow = this.tLow;
-    } finally {
-      lock.unlock();
-    }
-
-    tCycle = tHigh + tLow;
-    if (gpio == 27) {
-      Logger.info("tCycle = " + tCycle);
+    int dutyCycle = 0;
+    if (wheelSide == WheelSide.LEFT) {
+      dutyCycle = digisparkFeedbackEncoder.getLeftPctX10();
+    } else {
+      dutyCycle = digisparkFeedbackEncoder.getRightPctX10();
     }
     // Did we get pulses inside the prescribed timing window?
-    if (tCycle > 1000000 && tCycle < 1200000) {
-      int dutyCycle = (int)((100 * tHigh) / tCycle);
+    if (dutyCycle >= DUTY_CYCLE_MIN && dutyCycle <= DUTY_CYCLE_MAX) {
       theta = (fullCircleUnits - 1) - ((dutyCycle - DUTY_CYCLE_MIN) * fullCircleUnits) / (DUTY_CYCLE_MAX - DUTY_CYCLE_MIN + 1);
       if (theta < 0) {
         theta = 0;
@@ -100,36 +78,8 @@ public class ParallaxHallEffectFeedbackSensor
       previousTheta = theta;
       return true;
     } else {
-      // No, so tell caller that we can measure angle this trip
+      // No, so tell caller that we can not measure angle this trip
       return false;
     }
-  }
-
-  @Override
-  public void valueChanged(DigitalInputEvent event) {
-    long nanoTime = event.getNanoTime();
-    boolean value = event.getValue();
-
-    // Records high pulse time
-    if (value == false && lastValue == true) {
-      lock.lock();
-      try {
-        tHigh = nanoTime - lastNanos;
-        lastValue = value;
-        lastNanos = nanoTime;
-      } finally {
-        lock.unlock();
-      }
-    // Records low pulse time
-    } else if (value == true && lastValue == false) {
-      lock.lock();
-      try {
-        tLow = nanoTime - lastNanos;
-        lastValue = value;
-        lastNanos = nanoTime;
-      } finally {
-        lock.unlock();
-      }
-    } 
   }
 }

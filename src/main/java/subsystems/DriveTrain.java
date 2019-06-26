@@ -1,6 +1,7 @@
 package subsystems;
 
 import commands.*;
+import devices.DigisparkFeedbackEncoder;
 import devices.ParallaxHallEffectFeedbackSensor;
 
 import com.diozero.devices.Servo;
@@ -17,6 +18,7 @@ import oi.OperatorInterface;
 public class DriveTrain extends Subsystem {
   private final Servo leftWheelServo;
   private final Servo rightWheelServo;
+  private final DigisparkFeedbackEncoder digisparkFeedbackEncoder;
   private final ParallaxHallEffectFeedbackSensor leftWheelFeedbackSensor;
   private final ParallaxHallEffectFeedbackSensor rightWheelFeedbackSensor;
   private final Trim trim;
@@ -25,7 +27,8 @@ public class DriveTrain extends Subsystem {
 
   public DriveTrain(Trim trim, 
       Servo leftWheelServo, 
-      Servo rightWheelServo, 
+      Servo rightWheelServo,
+      DigisparkFeedbackEncoder digisparkFeedbackEncoder, 
       ParallaxHallEffectFeedbackSensor leftWheelFeedbackSensor,
       ParallaxHallEffectFeedbackSensor rightWheelFeedbackSensor,
       OperatorInterface operatorInterface) {
@@ -33,6 +36,7 @@ public class DriveTrain extends Subsystem {
     this.trim = trim;
     this.leftWheelServo = leftWheelServo;
     this.rightWheelServo = rightWheelServo;
+    this.digisparkFeedbackEncoder = digisparkFeedbackEncoder;
     this.leftWheelFeedbackSensor = leftWheelFeedbackSensor;
     this.rightWheelFeedbackSensor = rightWheelFeedbackSensor;
     this.operatorInterface = operatorInterface;
@@ -87,6 +91,7 @@ public class DriveTrain extends Subsystem {
   }
 
   public void updateFeedbackSensors() {
+    digisparkFeedbackEncoder.update();
     leftWheelFeedbackSensor.update();
     rightWheelFeedbackSensor.update();
   }

@@ -4,8 +4,6 @@ import oi.OperatorInterface;
 
 import subsystems.DriveTrain;
 
-import org.pmw.tinylog.Logger;
-
 import edu.wpi.first.wpilibj.command.Command;
 
 public class ArcadeDrive extends Command {
@@ -55,7 +53,6 @@ public class ArcadeDrive extends Command {
     driveTrain.updateFeedbackSensors();
     if (lastLeftRotationCount != driveTrain.getLeftWheelTickCount() / 360) {
       lastLeftRotationCount = driveTrain.getLeftWheelTickCount() / 360;
-      Logger.info(lastLeftRotationCount);
     }
   }
 
