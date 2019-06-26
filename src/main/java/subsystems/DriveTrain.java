@@ -48,15 +48,7 @@ public class DriveTrain extends Subsystem {
    */
   public void setLeftWheelDrive(int pct) {
     try {
-      if (pct > 0) {
-        float scale = trim.getMaxPulseWidthMs() - trim.getMidPulseWidthMs();
-        leftWheelServo.setPulseWidthMs(trim.getMidPulseWidthMs() + (scale * pct / 100));
-      } else if (pct < 0) {
-        float scale = trim.getMidPulseWidthMs() - trim.getMinPulseWidthMs();
-        leftWheelServo.setPulseWidthMs(trim.getMidPulseWidthMs() + (scale * pct / 100));
-      } else {
-        leftWheelServo.setPulseWidthMs(trim.getMidPulseWidthMs());
-      }
+      setWheelDrive(pct, leftWheelServo);
     } catch (RuntimeIOException e) {
       Logger.error("Error setting left wheel drive percentage: " + e.getMessage());
     }
@@ -68,18 +60,66 @@ public class DriveTrain extends Subsystem {
    */
   public void setRightWheelDrive(int pct) {
     try {
-      if (pct > 0) {
-        float scale = trim.getMaxPulseWidthMs() - trim.getMidPulseWidthMs();
-        rightWheelServo.setPulseWidthMs(trim.getMidPulseWidthMs() + (scale * pct / 100));
-      } else if (pct < 0) {
-        float scale = trim.getMidPulseWidthMs() - trim.getMinPulseWidthMs();
-        rightWheelServo.setPulseWidthMs(trim.getMidPulseWidthMs() + (scale * pct / 100));
-      } else {
-        rightWheelServo.setPulseWidthMs(trim.getMidPulseWidthMs());
-      }
+      setWheelDrive(pct, rightWheelServo);
     } catch (RuntimeIOException e) {
       Logger.error("Error setting right wheel drive percentage: " + e.getMessage());
     }
+  }
+
+  /**
+   * Centralized method to make drive train servos move at a given
+   * rate with is a percentage of max.
+   * @param pct     A percentage of power from -100 to 100
+   * @param servo   The servo to set
+   */
+  private void setWheelDrive(int pct, Servo servo) {
+    if (pct > 0) {
+      float scale = trim.getMaxPulseWidthMs() - trim.getMidPulseWidthMs();
+      servo.setPulseWidthMs(trim.getMidPulseWidthMs() + (scale * pct / 100));
+    } else if (pct < 0) {
+      float scale = trim.getMidPulseWidthMs() - trim.getMinPulseWidthMs();
+      servo.setPulseWidthMs(trim.getMidPulseWidthMs() + (scale * pct / 100));
+    } else {
+      servo.setPulseWidthMs(trim.getMidPulseWidthMs());
+    }
+  }
+
+  /**
+   * Get the percentage of power being applied to the right wheel.
+   * @return  An integer between -100 and 100.
+   */
+  public int getRightWheelDrive() {
+    return getWheelDrive(rightWheelServo);
+  }
+
+  /**
+   * Get the percentage of power being applied to the left wheel.
+   * @return  An integer between -100 and 100.
+   */
+  public int getLeftWheelDrive() {
+    return -getWheelDrive(leftWheelServo);
+    /*
+    if (pct > 0) {
+      return pct - 100;
+    } else if (pct < 0) {
+      return 100 + pct;
+    } else {
+      return 0;
+    }
+    */
+  }
+
+  private int getWheelDrive(Servo servo) {
+    float pulseWidthMs = servo.getPulseWidthMs();
+    float pct = 0;
+    if (pulseWidthMs > trim.getMidPulseWidthMs()) {
+      float scale = trim.getMaxPulseWidthMs() - trim.getMidPulseWidthMs();
+      pct = ((pulseWidthMs - trim.getMidPulseWidthMs()) / scale) * 100;
+    } else if (pulseWidthMs < trim.getMidPulseWidthMs()) {
+      float scale = trim.getMidPulseWidthMs() - trim.getMinPulseWidthMs();
+      pct = ((pulseWidthMs - trim.getMidPulseWidthMs() ) / scale) * 100;
+    }
+    return (int)Math.round(pct);
   }
 
   public long getLeftWheelTickCount() {
